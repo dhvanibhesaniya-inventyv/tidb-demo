@@ -1,0 +1,40 @@
+{
+    "env": "production",
+    "url": "192.168.26.64:30902",
+    "logger": {
+        "exceptionlogfilename": "exceptions.log",
+        "httperrorlogfilename": "httpError.log",
+        "httplogfilename": "http.log",
+        "httplogformat": "",
+        "logfilename": "logs.log",
+        "logfileprefix": "",
+        "logfilesize": 17408,
+        "path": "./logs",
+        "alllogscommonfilepath": "logs/step/All-Logs.log",
+        "rollerbasestart": 1,
+        "rollermaxcount": 999,
+        "rollerfilepathpattern": "logs/LogsFiles/All-Logs_{}.log"
+    },
+    "kafka": {
+        "bootstrapserver": "localhost:9092",
+        "rowhistory": "rowhistory",
+        "connectTimeout": "10000",
+        "autoCommit": "false",
+        "autoOffsetReset": "latest"
+    },
+    "port": "50051",
+    "tikv": {
+        "tlsclusterenabled": false,
+        "sslcacerti": "/etc/certificate/ca.crt",
+        "sslclientcerti": "/etc/certificate/tls.crt",
+        "sslclientkeycerti": "/etc/certificate/tls.key",
+        "server": "127.0.0.1:2379"
+    },
+    "loglevel": "error",
+    "tidb":{
+        "host":"127.0.0.1",
+        "port":"4000",
+        "username":"root",
+        "password":""
+    }
+}

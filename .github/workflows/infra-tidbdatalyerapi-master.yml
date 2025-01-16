@@ -1,0 +1,127 @@
+name: Infra tidb datalayerapi master
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '.github/workflows/**'
+
+env:
+  GCR_IMAGE_NAME: infra-337510/tools/tidb-datalayerapi-master
+  HARBOR_IMAGE_NAME: infra/tidb-datalayerapi-master
+  VERSION: latest
+  DOCKERFILE_PATH: ./Dockerfile
+  GCR_REGISTRY: gcr.io
+  HARBOR_REGISTRY_FR: fr-harbor.dynamic1001.com
+  HARBOR_USERNAME_FR: ${{ secrets.CONTAINER_REGISTRY_HARBOR_FR_INFRA_USERNAME }}
+  HARBOR_PASSWORD_FR: ${{ secrets.CONTAINER_REGISTRY_HARBOR_FR_INFRA_PASSWORD }}
+  HARBOR_REGISTRY_WA: wa-harbor.dynamic1001.com
+  HARBOR_USERNAME_WA: ${{ secrets.CONTAINER_REGISTRY_HARBOR_WA_INFRA_USERNAME }}
+  HARBOR_PASSWORD_WA: ${{ secrets.CONTAINER_REGISTRY_HARBOR_WA_INFRA_PASSWORD }}
+  HARBOR_REGISTRY_DU: du-harbor.dynamic1001.com
+  HARBOR_USERNAME_DU: ${{ secrets.CONTAINER_REGISTRY_HARBOR_DU_INFRA_USERNAME }}
+  HARBOR_PASSWORD_DU: ${{ secrets.CONTAINER_REGISTRY_HARBOR_DU_INFRA_PASSWORD }}
+  MESSAGE_JSON_FR: message_fr.json
+  MESSAGE_JSON_WA: message_wa.json
+  MESSAGE_JSON_DU: message_du.json
+
+jobs:
+  build-docker-image:
+    runs-on: buildenv-4c5r
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+        
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.CONTAINER_REGISTRY_GCR_INFRA }}"
+
+      - name: Set up Google Cloud SDK
+        uses: "google-github-actions/setup-gcloud@v1"
+        with:
+          version: ">= 363.0.0"
+          project_id: mtpo-prod
+
+      - name: Login to GCR
+        uses: docker/login-action@v3
+        with:
+          registry: gcr.io
+          username: _json_key
+          password: ${{ secrets.CONTAINER_REGISTRY_GCR_INFRA }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Harbor FR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY_FR }}
+          username: ${{ env.HARBOR_USERNAME_FR }}
+          password: ${{ env.HARBOR_PASSWORD_FR }}
+
+      - name: Login to Harbor WA
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY_WA }}
+          username: ${{ env.HARBOR_USERNAME_WA }}
+          password: ${{ env.HARBOR_PASSWORD_WA }}
+      
+      - name: Login to Harbor DU
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY_DU }}
+          username: ${{ env.HARBOR_USERNAME_DU }}
+          password: ${{ env.HARBOR_PASSWORD_DU }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ env.GCR_REGISTRY }}/${{ env.GCR_IMAGE_NAME }}:${{ env.VERSION }} -f ${{ env.DOCKERFILE_PATH}} .
+          docker image tag ${{ env.GCR_REGISTRY }}/${{ env.GCR_IMAGE_NAME }}:${{ env.VERSION }} ${{ env.HARBOR_REGISTRY_FR }}/${{ env.HARBOR_IMAGE_NAME }}:${{ env.VERSION }}
+          docker image tag ${{ env.GCR_REGISTRY }}/${{ env.GCR_IMAGE_NAME }}:${{ env.VERSION }} ${{ env.HARBOR_REGISTRY_WA }}/${{ env.HARBOR_IMAGE_NAME }}:${{ env.VERSION }}
+          docker image tag ${{ env.GCR_REGISTRY }}/${{ env.GCR_IMAGE_NAME }}:${{ env.VERSION }} ${{ env.HARBOR_REGISTRY_DU }}/${{ env.HARBOR_IMAGE_NAME }}:${{ env.VERSION }}
+          docker push ${{ env.GCR_REGISTRY }}/${{ env.GCR_IMAGE_NAME }}:${{ env.VERSION }}
+          docker push ${{ env.HARBOR_REGISTRY_FR }}/${{ env.HARBOR_IMAGE_NAME }}:${{ env.VERSION }}
+          docker push ${{ env.HARBOR_REGISTRY_DU }}/${{ env.HARBOR_IMAGE_NAME }}:${{ env.VERSION }}
+          docker push ${{ env.HARBOR_REGISTRY_WA }}/${{ env.HARBOR_IMAGE_NAME }}:${{ env.VERSION }}
+          echo "{\"action\":\"INSERT\",\"digest\":\""${{ env.HARBOR_REGISTRY_FR }}/${{ env.HARBOR_IMAGE_NAME }}@$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.HARBOR_REGISTRY_FR }}/${{ env.HARBOR_IMAGE_NAME }}:latest | awk -F'@' '{print $2}')"\",\"tag\":\""${{ env.HARBOR_REGISTRY_FR }}/${{ env.HARBOR_IMAGE_NAME }}:latest"\"}" > ${{ env.MESSAGE_JSON_FR }}
+          echo "{\"action\":\"INSERT\",\"digest\":\""${{ env.HARBOR_REGISTRY_WA }}/${{ env.HARBOR_IMAGE_NAME }}@$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.HARBOR_REGISTRY_WA }}/${{ env.HARBOR_IMAGE_NAME }}:latest | awk -F'@' '{print $2}')"\",\"tag\":\""${{ env.HARBOR_REGISTRY_WA }}/${{ env.HARBOR_IMAGE_NAME }}:latest"\"}" > ${{ env.MESSAGE_JSON_WA }}
+          echo "{\"action\":\"INSERT\",\"digest\":\""${{ env.HARBOR_REGISTRY_DU }}/${{ env.HARBOR_IMAGE_NAME }}@$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.HARBOR_REGISTRY_DU }}/${{ env.HARBOR_IMAGE_NAME }}:latest | awk -F'@' '{print $2}')"\",\"tag\":\""${{ env.HARBOR_REGISTRY_DU }}/${{ env.HARBOR_IMAGE_NAME }}:latest"\"}" > ${{ env.MESSAGE_JSON_DU }}
+
+      - id: "auth_MTPO"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.CONTAINER_REGISTRY_GCR_MTPO }}"
+          
+      - name: Publish message to Pub/Sub for FR
+        id: message_fr
+        run: |
+          MESSAGE_ID=$(gcloud pubsub topics publish gcr --message "$(cat ${{ env.MESSAGE_JSON_FR }})" --format="get(messageIds)")
+          echo "MESSAGE_ID=$MESSAGE_ID" > message.txt
+          cat ${{ env.MESSAGE_JSON_FR }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.CONTAINER_REGISTRY_GCR_MTPO }}
+
+      - name: Publish message to Pub/Sub for WA
+        id: message_wa
+        run: |
+          MESSAGE_ID=$(gcloud pubsub topics publish gcr --message "$(cat ${{ env.MESSAGE_JSON_WA }})" --format="get(messageIds)")
+          echo "MESSAGE_ID=$MESSAGE_ID" > message.txt
+          cat ${{ env.MESSAGE_JSON_WA }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.CONTAINER_REGISTRY_GCR_MTPO }}
+
+      - name: Publish message to Pub/Sub for DU
+        id: message_du
+        run: |
+          MESSAGE_ID=$(gcloud pubsub topics publish gcr --message "$(cat ${{ env.MESSAGE_JSON_DU }})" --format="get(messageIds)")
+          echo "MESSAGE_ID=$MESSAGE_ID" > message.txt
+          cat ${{ env.MESSAGE_JSON_DU }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.CONTAINER_REGISTRY_GCR_MTPO }}    

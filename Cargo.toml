@@ -1,0 +1,38 @@
+[package]
+name = "tidb_demo"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib","lib"]
+name = "datalayerapi_tidb"
+path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# rdkafka = { version = "0.36.0", features = ["cmake-build","ssl"] }
+mysql_async = { version = "0.34.1" }
+tonic = "0.11"
+prost = "0.12"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+futures = "0.3.28"
+serde_json = "1.0.1"
+lazy_static = "^1.4"
+serde = { version = "1", features = ["derive"] }
+config = "0.13.2"
+log4rs = { version ="1.0.0", features = ["gzip"] }
+chrono = "0.4.22"
+log = "0.4.17"
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+once_cell = "1.18.0"
+r2d2 = "0.8"
+sqlx = { version = "0.8.3", features = ["mysql", "runtime-tokio","chrono"] }
+dotenv = "0.15"
+
+
+
+[build-dependencies]
+# tonic-build = "0.10"
+# prost-build = "0.12"
+# clap = "2"

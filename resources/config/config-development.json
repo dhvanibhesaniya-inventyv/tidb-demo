@@ -1,0 +1,8 @@
+{
+    "tidb":{
+        "host":"192.168.26.64",
+        "port":"30904",
+        "username":"developer",
+        "password":"developer@123"
+    }
+}

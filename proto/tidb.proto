@@ -1,0 +1,27 @@
+syntax = "proto3";
+package tidb;
+
+service Tidb {
+    rpc executeQuery (ExecuteQueryRequest) returns (ExecuteQueryResponse);
+    rpc checkConnection (CheckConnectionRequest) returns (CheckConnectionResponse);
+}
+
+message ExecuteQueryRequest {
+    string query = 1;
+    string db_name = 2;
+}
+
+message ExecuteQueryResponse {
+    int32 code = 1;
+    string msg   = 2;
+    string data = 3;
+}
+
+message CheckConnectionRequest {
+    string db_name = 2;
+}
+message CheckConnectionResponse {
+    int32 code = 1;
+    string msg   = 2;
+}
+
