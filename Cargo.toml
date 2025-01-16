@@ -27,7 +27,7 @@ log = "0.4.17"
 async-std = { version = "1", features = ["attributes", "tokio1"] }
 once_cell = "1.18.0"
 r2d2 = "0.8"
-sqlx = { version = "0.8.3", features = ["mysql", "runtime-tokio","chrono"] }
+# sqlx = { version = "0.8.3", features = ["mysql", "runtime-tokio","chrono"] }
 dotenv = "0.15"
 
 
